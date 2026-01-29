@@ -1,4 +1,6 @@
-/prova_weights.pt
-/video_pokemon.mp4
-/yolov8n.pt
+yolov8n.pt
 *.cache
+runs/
+yolo26n.pt
+__pycache__/
+extracted_frames/*

@@ -1,5 +1,5 @@
-from ultralytics import YOLO
 from multiprocessing import freeze_support
+from ultralytics import YOLO
 
 if __name__ == "__main__":
     freeze_support()
