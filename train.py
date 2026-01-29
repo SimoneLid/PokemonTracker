@@ -1,11 +1,17 @@
 from ultralytics import YOLO
+from multiprocessing import freeze_support
 
+if __name__ == "__main__":
+    freeze_support()
 
-model = YOLO("yolov8n.pt") 
+    model = YOLO("yolov8n.pt") 
 
-results = model.train(
-    data="pokemon.yaml",
-    epochs=50,
-    imgsz=640,
-    plots=True
-)
+    results = model.train(
+        data="pokemon.yaml",
+        epochs=50,
+        imgsz=640,
+        plots=True,
+        device="cuda",
+        batch=16,
+        workers=1
+    )
