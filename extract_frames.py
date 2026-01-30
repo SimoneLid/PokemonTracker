@@ -1,5 +1,6 @@
 import cv2
 import os
+from sys import argv
 
 def extract_frames(video_path, output_folder):
     # Create the output directory if it doesn't exist
@@ -23,7 +24,7 @@ def extract_frames(video_path, output_folder):
             break
 
         # Save the frame as a JPEG file
-        frame_name = f"frame_{frame_count:04d}.jpg"
+        frame_name = f"frame_{frame_count:06d}_{os.path.basename(video_path).rsplit('.', 1)[0]}.jpg"
         frame_path = os.path.join(output_folder, frame_name)
         cv2.imwrite(frame_path, frame)
 
@@ -34,4 +35,4 @@ def extract_frames(video_path, output_folder):
     print(f"Done! Extracted {frame_count} frames to '{output_folder}'.")
 
 # Usage
-extract_frames('video_pokemon.mp4', 'extracted_frames')
+extract_frames(argv[1], 'dataset/images')

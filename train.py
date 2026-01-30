@@ -13,5 +13,5 @@ if __name__ == "__main__":
         plots=True,
         device="cuda",
         batch=16,
-        workers=1
+        workers=1,
     )
