@@ -149,6 +149,7 @@ def main():
         txt_path = os.path.join(EXIT_DIR+"/labels", txt_name)
         
         if VIDEO_NAME not in filename:
+            idx += 1
             continue
 
         # Carica immagine
