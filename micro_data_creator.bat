@@ -28,7 +28,7 @@ for %%f in (videos\train\*.mp4) do (
     echo ---------------------------------------------
     
     REM --- 3. LABELING DEI PRIMI BOX ---
-    python box_drawer.py 3 "%%~nf.mp4"
+    py box_drawer.py 3 "%%~nf"
 
 )
 
