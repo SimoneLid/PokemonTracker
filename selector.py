@@ -1,11 +1,12 @@
 import cv2
 import os
 from ultralytics import YOLO
+from sys import argv
 
 # --- CONFIGURAZIONE ---
 # Assicurati che il percorso punti al modello corretto
-MODEL_PATH = "runs\\detect\\runs\\micro\\autolabeler_model8\\weights\\best.pt"
-VIDEO_PATH = "video_pokemon.mp4"
+MODEL_PATH = argv[1]
+VIDEO_PATH = argv[2]
 
 # Cartelle di destinazione
 OUTPUT_BASE = "dataset_final"

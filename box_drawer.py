@@ -1,11 +1,15 @@
 import cv2
 import os
 import glob
+import shutil
+from sys import argv
 
 # --- CONFIGURAZIONE ---
-IMAGES_DIR = "dataset_micro\images"      # Cartella con le tue immagini
-LABELS_DIR = "dataset_micro\labels"    # Cartella dove salvare i txt
-CLASS_ID = 0               # 0 = Pikachu (o la tua classe)
+IMAGES_DIR = "dataset\images"
+EXIT_DIR = "dataset_micro"
+CLASS_ID = 0
+IMG_NUM = int(argv[1])
+VIDEO_NAME = argv[2]
 # ----------------------
 
 # Colori per il disegno (B, G, R)
@@ -55,8 +59,14 @@ def load_existing_labels(txt_path, img_width, img_height):
                     boxes.append((x1, y1, x2, y2))
     return boxes
 
-def save_labels(txt_path, boxes, img_width, img_height):
+def save_labels(img_path,txt_path, boxes, img_width, img_height):
     """Salva la lista di box nel file .txt"""
+    if len(boxes)==0:
+        print(f"Immagine skippata.")
+        return
+
+    shutil.copy(img_path,EXIT_DIR+"/images")
+
     with open(txt_path, 'w') as f:
         for box in boxes:
             # Assicuriamoci che x1 < x2 e y1 < y2
@@ -103,8 +113,9 @@ def main():
     global img, temp_img, current_boxes
     
     # Setup cartelle
-    if not os.path.exists(LABELS_DIR):
-        os.makedirs(LABELS_DIR)
+    if not os.path.exists(EXIT_DIR):
+        os.makedirs(EXIT_DIR+"/labels")
+        os.makedirs(EXIT_DIR+"/images")
         
     # Trova immagini
     extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp']
@@ -122,7 +133,6 @@ def main():
     print("ISTRUZIONI:")
     print("  [MOUSE SX + TRASCINA]: Disegna box")
     print("  [D]: Prossima immagine (Salva)")
-    print("  [A]: Immagine precedente (Salva)")
     print("  [C]: Cancella tutti i box in questa foto")
     print("  [Q]: Esci")
     print(f"Trovate {len(img_files)} immagini.")
@@ -131,12 +141,16 @@ def main():
     cv2.setMouseCallback('Labeler', mouse_callback)
 
     idx = 0
-    while idx < len(img_files):
+    saved_num=0
+    while saved_num < IMG_NUM and idx < len(img_files):
         img_path = img_files[idx]
         filename = os.path.basename(img_path)
         txt_name = os.path.splitext(filename)[0] + ".txt"
-        txt_path = os.path.join(LABELS_DIR, txt_name)
+        txt_path = os.path.join(EXIT_DIR+"/labels", txt_name)
         
+        if VIDEO_NAME not in filename:
+            continue
+
         # Carica immagine
         img = cv2.imread(img_path)
         if img is None:
@@ -169,18 +183,15 @@ def main():
 
             # Navigazione
             if key == ord('d'): # Next
-                save_labels(txt_path, current_boxes, w, h)
+                save_labels(img_path,txt_path, current_boxes, w, h)
                 idx += 1
-                break
-            elif key == ord('a'): # Prev
-                save_labels(txt_path, current_boxes, w, h)
-                idx = max(0, idx - 1)
+                saved_num+=1
                 break
             elif key == ord('c'): # Clear
                 current_boxes = []
                 temp_img = img.copy()
             elif key == ord('q'): # Quit
-                save_labels(txt_path, current_boxes, w, h)
+                save_labels(img_path,txt_path, current_boxes, w, h)
                 cv2.destroyAllWindows()
                 return
 
