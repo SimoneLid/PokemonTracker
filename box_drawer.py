@@ -132,6 +132,7 @@ def main():
     print("--- MANUAL LABELER ---")
     print("ISTRUZIONI:")
     print("  [MOUSE SX + TRASCINA]: Disegna box")
+    print("  [A]: Passa alla prossima immagine senza salvare")
     print("  [D]: Prossima immagine (Salva)")
     print("  [C]: Cancella tutti i box in questa foto")
     print("  [Q]: Esci")
@@ -187,6 +188,9 @@ def main():
                 save_labels(img_path,txt_path, current_boxes, w, h)
                 idx += 1
                 saved_num+=1
+                break
+            elif key == ord('a'): # Skip
+                idx += 1
                 break
             elif key == ord('c'): # Clear
                 current_boxes = []

@@ -32,6 +32,8 @@ def extract_frames(video_path, output_folder):
 
     # Clean up
     video_capture.release()
+    with open("temp_data.txt", "w") as f:
+        f.write(str(frame_count))
     print(f"Done! Extracted {frame_count} frames to '{output_folder}'.")
 
 # Usage

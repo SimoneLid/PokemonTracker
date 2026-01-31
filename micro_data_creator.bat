@@ -6,6 +6,7 @@ REM Pulisce le cartelle dataset prima di iniziare per evitare di mischiare dati 
 echo Sto pulendo le cartelle dataset esistenti...
 if exist "dataset\images" rmdir /s /q "dataset\images"
 if exist "dataset\labels" rmdir /s /q "dataset\labels"
+if exist "dataset_micro" rmdir /s /q "dataset_micro"
 
 REM --- 2. CICLO SU TUTTI I VIDEO ---
 echo Inizio elaborazione dei video nella cartella videos\train...
@@ -26,9 +27,10 @@ for %%f in (videos\train\*.mp4) do (
     
     echo [OK] !filename! elaborato.
     echo ---------------------------------------------
-    
+    set /p VALORE_ESTRATTO=<temp_data.txt
+
     REM --- 3. LABELING DEI PRIMI BOX ---
-    py box_drawer.py 3 "%%~nf"
+    py box_drawer_test.py 3 "%%~nf" !VALORE_ESTRATTO!
 
 )
 
