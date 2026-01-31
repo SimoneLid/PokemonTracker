@@ -37,4 +37,4 @@ def extract_frames(video_path, output_folder):
     print(f"Done! Extracted {frame_count} frames to '{output_folder}'.")
 
 # Usage
-extract_frames(argv[1], 'dataset/images')
+extract_frames(argv[1], argv[2])
