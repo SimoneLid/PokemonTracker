@@ -5,7 +5,6 @@ REM --- 1. PULIZIA INIZIALE (Opzionale ma raccomandata) ---
 REM Pulisce le cartelle dataset prima di iniziare per evitare di mischiare dati vecchi
 echo Sto pulendo le cartelle dataset esistenti...
 if exist "images_all" rmdir /s /q "images_all"
-if exist "dataset_micro" rmdir /s /q "dataset_micro"
 
 REM --- 2. CICLO SU TUTTI I VIDEO ---
 echo Inizio elaborazione dei video nella cartella videos\train...

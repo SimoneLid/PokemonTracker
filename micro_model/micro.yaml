@@ -1,4 +1,4 @@
-path: ../dataset_micro
+path: ./dataset_micro
 train: train/images
 val: val/images
 
