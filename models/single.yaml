@@ -1,0 +1,11 @@
+path: ./dataset_single
+train: train/images
+val: val/images
+
+names:
+  0: Magikarp
+  1: Patrat
+  2: Binacle
+  3: Kakuna
+  4: Budew
+  5: Staryu

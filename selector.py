@@ -23,7 +23,7 @@ print("Caricamento modello...")
 model = YOLO(MODEL_PATH)
 
 cap = cv2.VideoCapture(VIDEO_PATH)
-frame_count = 0
+frame_count = -1
 saved_count = 0
 
 print("\n--- ISTRUZIONI ---")
