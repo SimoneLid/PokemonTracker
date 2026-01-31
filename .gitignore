@@ -4,6 +4,6 @@ runs/
 yolo26n.pt
 __pycache__/
 extracted_frames/*
-cvat.sh
+cvat.bat
 images_all/
 temp_data.txt
