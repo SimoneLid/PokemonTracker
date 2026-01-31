@@ -1,9 +1,9 @@
 import cv2
 from ultralytics import YOLO
 
-model = YOLO("runs\\detect\\train31\\weights\\best.pt")
+model = YOLO("micro_model/micro.pt")
 
-video_path = "videos/Test/Zona_2_02.mp4"
+video_path = "videos/test/Zona_2_03.mp4"
 cap = cv2.VideoCapture(video_path)
 
 while cap.isOpened():

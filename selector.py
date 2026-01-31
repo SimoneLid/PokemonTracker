@@ -7,9 +7,10 @@ from sys import argv
 # Assicurati che il percorso punti al modello corretto
 MODEL_PATH = argv[1]
 VIDEO_PATH = argv[2]
+video_name = os.path.basename(VIDEO_PATH).rsplit(".")[0]
 
 # Cartelle di destinazione
-OUTPUT_BASE = "dataset_final"
+OUTPUT_BASE = argv[3]
 OUTPUT_IMAGES = os.path.join(OUTPUT_BASE, "images")
 OUTPUT_LABELS = os.path.join(OUTPUT_BASE, "labels")
 
@@ -49,30 +50,15 @@ while cap.isOpened():
 
     if results[0].boxes is not None and len(results[0].boxes) > 0:
         has_detection = True
-        
-        # --- LOGICA BEST BOX ---
-        # Trova l'indice del box con la confidenza più alta
-        best_idx = results[0].boxes.conf.argmax()
-        
-        # Estrai SOLO quel box specifico
-        # Nota: results[0].boxes[best_idx] crea un nuovo oggetto Boxes contenente solo quello
-        best_box = results[0].boxes[best_idx]
-        
-        # Sovrascriviamo i box nel risultato originale
-        # Così quando chiamiamo .plot(), disegnerà solo questo!
-        results[0].boxes = best_box
 
     # SE ha trovato qualcosa, mostriamo e chiediamo all'utente
     if has_detection:
         # Disegna (ora disegnerà solo il box migliore grazie alla sovrascrittura sopra)
         annotated_frame = results[0].plot()
         
-        # Estraiamo la confidenza del "vincitore" per mostrarla
-        current_conf = best_box.conf.item()
-        
-        # Info a schermo
-        cv2.putText(annotated_frame, f"Best Conf: {current_conf:.2f} | Saved: {saved_count}", (20, 40), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        cv2.putText(annotated_frame, f"Frame {frame_count}", (20, 40), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+
         cv2.putText(annotated_frame, "[A] Accept  [D] Discard", (20, 80), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
@@ -85,26 +71,26 @@ while cap.isOpened():
             # --- TASTO 'A' (ACCETTA) ---
             if key == ord('a'):
                 # 1. Salva immagine pulita (senza box disegnati)
-                filename = f"frame_{frame_count:06d}"
+                filename = f"frame_{frame_count:06d}_{video_name}"
                 img_save_path = os.path.join(OUTPUT_IMAGES, filename + ".jpg")
                 cv2.imwrite(img_save_path, frame)
                 
                 # 2. Salva Label txt (SOLO DEL BEST BOX)
                 txt_save_path = os.path.join(OUTPUT_LABELS, filename + ".txt")
                 with open(txt_save_path, 'w') as f:
-                    # best_box contiene solo un elemento, quindi questo loop gira una volta sola
-                    for box in best_box:
+                    
+                    for box in results[0].boxes:
                         cls = int(box.cls[0])
                         x, y, w, h = box.xywhn[0].tolist()
                         f.write(f"{cls} {x:.6f} {y:.6f} {w:.6f} {h:.6f}\n")
                 
-                print(f"✅ Salvato frame {frame_count} (Conf: {current_conf:.2f})")
+                print(f"Salvato frame {frame_count}")
                 saved_count += 1
                 break 
 
             # --- TASTO 'D' (SCARTA) ---
             elif key == ord('d'):
-                print(f"❌ Scartato frame {frame_count}")
+                print(f"Scartato frame {frame_count}")
                 break 
             
             # --- TASTO 'Q' (ESCI) ---
