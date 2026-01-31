@@ -5,8 +5,6 @@ model = YOLO("models/single.pt")
 
 video_path = "videos/test/Zona_2_03.mp4"
 WINDOW_NAME = "Supervisione Dataset (Best Box)"  # Definisco il nome in una variabile per comodità
-cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)  # Rende la finestra ridimensionabile
-cv2.resizeWindow(WINDOW_NAME, 1280, 720)
 cap = cv2.VideoCapture(video_path)
 
 while cap.isOpened():
