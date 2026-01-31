@@ -6,3 +6,6 @@ __pycache__/
 extracted_frames/*
 dataset/
 cvat.bat
+dataset*/
+images_all/
+temp_data.txt
