@@ -1,7 +1,7 @@
-yolov8n.pt
+models/yolov8n.pt
+models/yolo26n.pt
 *.cache
 runs/
-yolo26n.pt
 __pycache__/
 extracted_frames/*
 cvat.bat
