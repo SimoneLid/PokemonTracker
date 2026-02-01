@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set "num_done=0"
+set "num_done=3"
 set "dataset_out=dataset_single_v2"
-set "model_path=micro_model/micro.pt"
+set "model_path=models/single_v1_micro_trained.pt"
 
 REM --- CICLO SU TUTTI I VIDEO ---
 echo Inizio elaborazione dei video nella cartella videos\train...
@@ -28,7 +28,7 @@ for %%f in (videos\train\*.mp4) do (
         
     
         echo    - Calcolo frame...
-        python selector.py "micro_model/micro.pt" "!video_path!" %dataset_out%
+        py selector.py "models/single_v1_micro_trained.pt" "!video_path!" %dataset_out%
 
         
         echo [OK] !filename! elaborato.
