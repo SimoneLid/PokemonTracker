@@ -1,15 +1,16 @@
 import cv2
 import os
+from sys import argv
 from ultralytics import YOLO
 
 # --- CONFIGURAZIONE ---
-path_model_1 = "models/single.pt"
-path_model_2 = "models/single_micro_trained.pt" 
+path_model_1 = argv[1]
+path_model_2 = argv[2]
 
 NAME_MODEL_1 = os.path.basename(path_model_1) 
 NAME_MODEL_2 = os.path.basename(path_model_2)
 
-video_path = "videos/test/Zona_2_03.mp4"
+video_path = argv[3]
 WINDOW_NAME = "Confronto Modelli"
 SCALE_FACTOR = 0.5 
 # ----------------------

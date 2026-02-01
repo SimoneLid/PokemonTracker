@@ -1,10 +1,10 @@
 import cv2
 from ultralytics import YOLO
 
-model = YOLO("models/single.pt")
+model = YOLO("models/micro.pt")
 
-video_path = "videos/test/Zona_2_03.mp4"
-WINDOW_NAME = "Supervisione Dataset (Best Box)"  # Definisco il nome in una variabile per comodità
+video_path = "videos/test/Zona_2_06.mp4"
+WINDOW_NAME = "Supervisione Dataset"  # Definisco il nome in una variabile per comodità
 cap = cv2.VideoCapture(video_path)
 
 while cap.isOpened():
