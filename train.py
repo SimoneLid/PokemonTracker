@@ -15,12 +15,24 @@ if __name__ == "__main__":
 
         results = model.train(
             data=argv[2],
-            epochs=50,
+            epochs=100,          # Un po' di più perché togliamo augmentation forte
             imgsz=640,
-            plots=True,
-            device="cuda",
             batch=16,
-            workers=8,
+            rect=True,
+            # --- AUGMENTATION CORRETTA PER VIDEO GAME ---
+            degrees=5.0,         # Riduci: i pokemon non ruotano di 45 gradi a caso
+            translate=0.1,       # Riduci
+            scale=0.5,           # Ok
+            fliplr=0.5,          # Ok
+            mosaic=1.0,          # Ok
+            # --- COLORI (CRITICO) ---
+            hsv_h=0.015,         # Tonalità: minima variazione
+            hsv_s=0.2,           # Saturazione: bassa variazione (fondamentale per Magikarp)
+            hsv_v=0.3,           # Valore: media variazione (luce/ombra)
+            
+            # --- TRAINING TRICKS ---
+            close_mosaic=15,     # Disabilita mosaico alla fine per precisione
+            warmup_epochs=5,     
         )
         print("\n--- Inizio salvataggio del modello migliore ---")
         source_path = model.trainer.best

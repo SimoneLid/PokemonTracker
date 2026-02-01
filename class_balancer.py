@@ -31,7 +31,9 @@ def bilancia_dataset(cartella_input):
     target_istanze = min(conteggio_totale.values())
     print(f"Target istanze per ogni numero: {target_istanze}")
     print("-" * 30)
-
+    x = input("per uscire cliccare n\n")
+    if x == "n":
+        return
     # 3. Processo di eliminazione
     # Mischiamo i file per non essere deterministici
     nomi_file_random = list(info_file.keys())
@@ -40,7 +42,8 @@ def bilancia_dataset(cartella_input):
     eliminati = 0
     for nome_file in nomi_file_random:
         conteggio_questo_file = info_file[nome_file]
-        
+        if len(conteggio_questo_file) == 0:
+            continue
         # Decidiamo se eliminare il file:
         # Lo eliminiamo solo se TUTTE le classi contenute nel file superano il target
         puo_essere_eliminato = True

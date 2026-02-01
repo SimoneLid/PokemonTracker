@@ -1,5 +1,7 @@
 models/yolov8n.pt
+models/yolov8s.pt
 models/yolo26n.pt
+yolo26n.pt
 *.cache
 runs/
 __pycache__/
@@ -8,3 +10,4 @@ cvat.bat
 images_all/
 temp_data.txt
 dataset*/**/images
+flow.txt

@@ -28,7 +28,7 @@ for %%f in (videos\train\*.mp4) do (
         
     
         echo    - Calcolo frame...
-        python selector.py %model_path% "!video_path!" %dataset_out%
+        py antiselector.py %model_path% "!video_path!" %dataset_out%
 
         
         echo [OK] !filename! elaborato.

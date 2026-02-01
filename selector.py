@@ -73,7 +73,7 @@ while cap.isOpened():
                 # 1. Salva immagine pulita (senza box disegnati)
                 filename = f"frame_{frame_count:06d}_{video_name}"
                 img_save_path = os.path.join(OUTPUT_IMAGES, filename + ".jpg")
-                cv2.imwrite(img_save_path, frame)
+                #cv2.imwrite(img_save_path, frame)
                 
                 # 2. Salva Label txt (SOLO DEL BEST BOX)
                 txt_save_path = os.path.join(OUTPUT_LABELS, filename + ".txt")
