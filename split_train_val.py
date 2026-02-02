@@ -51,15 +51,16 @@ def split_dataset(source_labels_dir, output_dir="dataset", split_ratio=0.8):
 
     # 5. Move files function
     def move_files(file_list, subset):
-        for item in file_list:
+        for filename in file_list:
             # Source paths
-            src_lbl = os.path.join(source_labels_dir, item["label_file"])
+            src_lbl = os.path.join(source_labels_dir, filename)
             
             # Destination paths
-            dst_lbl = os.path.join(output_dir, subset, "labels", item["label_file"])
+            dst_lbl = os.path.join(output_dir, subset, "labels", filename)
             
-            # Move files (Change to shutil.copy if you want to keep originals)
-            shutil.move(src_lbl, dst_lbl)
+            # Check if it's a file (to avoid moving directories by accident)
+            if os.path.isfile(src_lbl):
+                shutil.move(src_lbl, dst_lbl)
 
     move_files(train_files, "train")
     move_files(val_files, "val")

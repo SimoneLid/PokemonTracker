@@ -1,7 +1,7 @@
 import cv2
 from ultralytics import YOLO
 
-model = YOLO("models/single_v3.pt")
+model = YOLO("models/single_v3.4.pt")
 
 video_path = "videos/test/Zona_2_07.mp4"
 WINDOW_NAME = "Supervisione Dataset"  # Definisco il nome in una variabile per comodità

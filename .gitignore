@@ -1,6 +1,4 @@
-models/yolov8n.pt
-models/yolov8s.pt
-models/yolo26n.pt
+models/yolov*
 yolo26n.pt
 *.cache
 runs/

@@ -4,9 +4,11 @@ from sys import argv
 import torch
 import shutil
 import os
+import time
 
 if __name__ == "__main__":
     if torch.cuda.is_available():
+        inizio = time.perf_counter()
         freeze_support()
 
         model_name = argv[3]
@@ -16,8 +18,8 @@ if __name__ == "__main__":
         results = model.train(
             data=argv[2],
             epochs=100,          # Un po' di più perché togliamo augmentation forte
-            imgsz=640,
-            batch=16,
+            imgsz=1280,
+            batch=4,
             rect=True,
             # --- AUGMENTATION CORRETTA PER VIDEO GAME ---
             degrees=5.0,         # Riduci: i pokemon non ruotano di 45 gradi a caso
@@ -44,6 +46,12 @@ if __name__ == "__main__":
             model_name += '.pt'
             
         dest_path = os.path.join(dest_folder, model_name)
+
+        fine = time.perf_counter()
+        
+        tempo_totale = fine - inizio
+
+        print(f"Il codice ha impiegato {tempo_totale:.6f} secondi")
 
         try:
             shutil.copy(source_path, dest_path)

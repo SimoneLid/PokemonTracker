@@ -1,4 +1,4 @@
-path: ./dataset_single_v3
+path: ./dataset_single_v3_final_split
 train: train/images
 val: val/images
 
