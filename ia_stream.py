@@ -14,14 +14,14 @@ POKEMON_LIST = [
     "Magikarp", "Patrat", "Binacle", "Kakuna", "Budew", "Staryu"
 ]
 
-ALLOWED_POKEMONS = list(False for _ in range(len(POKEMON_LIST)))
+ALLOWED_POKEMONS = list(True for _ in range(len(POKEMON_LIST)))
 
 
 # --- CONFIGURAZIONE ---
 MODEL_PATH = "models/single_v3.pt"
 CONFIDENCE = 0.2
 # Parola chiave da cercare nel titolo della finestra
-TARGET_WINDOW_KEYWORD = "Movies"
+TARGET_WINDOW_KEYWORD = "citron "
 
 # Colori
 TRANSPARENT_BG = '#010101'
@@ -164,7 +164,7 @@ class OverlayApp:
                 root,
                 text=POKEMON_LIST[i],
                 compound="top",  # Immagine sopra, testo sotto
-                bg="#222222",
+                bg="#005500",
                 fg="white",
                 activebackground="#444444",
                 activeforeground="white",
@@ -196,13 +196,12 @@ class OverlayApp:
             return
 
         wx, wy, ww, wh = win_rect['left'], win_rect['top'], win_rect['width'], win_rect['height']
-
         # 1. Calcolo Pannello Nero (25% W, 10% H)
-        panel_w = int(ww * 0.25)
-        panel_h = int(wh * 0.10)
+        panel_w = int(ww * 0.30)
+        panel_h = int(wh * 0.15)
+        
         panel_x = wx
         panel_y = wy + wh - panel_h
-
         self.canvas.create_rectangle(
             panel_x, panel_y, panel_x + panel_w, panel_y + panel_h,
             fill=PANEL_COLOR, outline=PANEL_COLOR
@@ -233,17 +232,17 @@ class OverlayApp:
                 btn.config(image=img_tk)
 
         # 4. Posiziona i bottoni
-        total_content_width = (btn_size * num_buttons) + \
+        total_content_width = (max_w * num_buttons) + \
             (padding * (num_buttons - 1))
         start_x_offset = (panel_w - total_content_width) // 2
-        start_y_offset = (panel_h - btn_size) // 2
+        start_y_offset = (panel_h - max_h) // 2
 
         current_x = panel_x + start_x_offset
         current_y = panel_y + start_y_offset
 
         for btn in self.buttons:
             btn.place(x=current_x, y=current_y,
-                      width=btn_size, height=btn_size)
+                      width=max_w, height=max_h)
             current_x += btn_size + padding
 
     def update_overlay(self):
