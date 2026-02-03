@@ -1,6 +1,6 @@
 models/yolov*
 yolo26n.pt
-*.cache
+*.cache*
 runs/
 __pycache__/
 extracted_frames/*
