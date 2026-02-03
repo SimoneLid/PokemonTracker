@@ -1,0 +1,6 @@
+[0203/185512.309:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: Impossibile trovare il file specificato. (0x2)
+[0203/185512.333:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: Impossibile trovare il file specificato. (0x2)
+[0203/185512.339:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: Impossibile trovare il file specificato. (0x2)
+[0203/185518.575:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: Impossibile trovare il file specificato. (0x2)
+[0203/185518.850:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: Impossibile trovare il file specificato. (0x2)
+[0203/185530.518:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: Impossibile trovare il file specificato. (0x2)
