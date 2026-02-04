@@ -8,4 +8,4 @@ cvat.bat
 images_all/
 temp_data.txt
 dataset*/**/images
-flow.txt
+flow

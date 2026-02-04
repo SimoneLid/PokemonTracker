@@ -5,6 +5,7 @@ import time
 import torch
 import cv2
 import numpy as np
+from sys import argv
 
 # --- 1. CONFIGURAZIONE PATH E IMPORT ---
 # Ottieni il percorso assoluto della cartella corrente
@@ -17,9 +18,9 @@ if str(YOLO_PATH) not in sys.path:
     sys.path.append(str(YOLO_PATH))
 
 # Import specifici di YOLOv5
-from utils.general import non_max_suppression, scale_boxes
-from utils.plots import Annotator, colors
-from utils.augmentations import letterbox
+from utils.general import non_max_suppression, scale_boxes #type: ignore
+from utils.plots import Annotator, colors #type: ignore
+from utils.augmentations import letterbox #type: ignore
 
 # --- 2. CARICAMENTO MODELLO ---
 print("Caricamento modello...")
@@ -27,7 +28,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Percorso pesi (adattato per puntare dentro la cartella yolov5 se necessario)
 # Se runs è dentro yolov5, usiamo YOLO_PATH / ...
-weights_path = YOLO_PATH / "runs" / "train" / "exp10" / "weights" / "best.pt"
+weights_path = YOLO_PATH / "runs" / "train" / "exp26" / "weights" / "best.pt" #argv[2] 
 
 # Caricamento con torch.hub locale
 # path=str(YOLO_PATH) dice a torch di cercare il codice sorgente nella cartella yolov5
@@ -37,7 +38,7 @@ model.to(device).eval()
 print(f"Modello caricato su {device}")
 
 # --- 3. CONFIGURAZIONE VIDEO ---
-video_path = r"C:\Users\pietr\Desktop\ComputerVision\ComputerVision\videos\test\Zona_2_09.mp4"
+video_path = argv[1]  #"videos/test/Zona_2_09.mp4"
 cap = cv2.VideoCapture(video_path)
 WINDOW_NAME = "Supervisione 6-Canali"
 
