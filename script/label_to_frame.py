@@ -14,8 +14,8 @@ DATASET_ROOT = argv[1]  # La cartella che contiene train e val
 VIDEOS_DIR = os.path.join("videos", "used") # Dove si trovano i video sorgente
 EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv'] # Estensioni video supportate
 
-# Regex per parsare il nome file: frame_000010_Zona_2_02.txt
-FILENAME_REGEX = re.compile(r"frame_(\d+)_(.+)\.txt")
+# Regex per parsare il nome file: xy_frame_counter
+FILENAME_REGEX = re.compile(r"^(\d+)_(frame_\d+)\.txt$")
 
 def get_video_map(video_folder):
     """
@@ -58,8 +58,8 @@ def scan_labels_and_build_tasks(dataset_root):
             
             match = FILENAME_REGEX.match(filename)
             if match:
-                frame_num_str = match.group(1)
-                video_name = match.group(2)
+                frame_num_str = match.group(2).split('_')[1]
+                video_name = f"Zona_2_{match.group(1)}" #help
                 frame_idx = int(frame_num_str)
                 
                 img_name = filename.replace(".txt", ".jpg")
