@@ -1,7 +1,7 @@
-models/yolov*
 models/*.engine
 models/*.onnx
-yolo26n.pt
+models/yolo*
+yolo*
 *.cache*
 runs/
 __pycache__/
