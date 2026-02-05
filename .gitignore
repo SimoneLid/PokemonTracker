@@ -1,4 +1,6 @@
 models/yolov*
+models/*.engine
+models/*.onnx
 yolo26n.pt
 *.cache*
 runs/
@@ -8,4 +10,4 @@ cvat.bat
 images_all/
 temp_data.txt
 dataset*/**/images
-flow
+flow.md
