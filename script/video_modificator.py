@@ -63,7 +63,7 @@ class VideoAnnotator:
     def get_label_filename(self, frame_idx=None):
         """Genera il percorso del file label. Se frame_idx è None, usa il corrente."""
         idx = frame_idx if frame_idx is not None else self.current_frame_idx
-        return os.path.join(self.output_dir, f"frame_{idx:06d}_{self.video_name}.txt")
+        return os.path.join(self.output_dir, f"{self.video_name}_{idx:06d}.txt")
 
     def update_consecutive_count(self):
         """Calcola quanti frame consecutivi (incluso questo all'indietro) sono salvati."""
