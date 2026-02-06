@@ -12,3 +12,4 @@ temp_data.txt
 dataset*/**/images
 flow.md
 *.npy
+*.log
