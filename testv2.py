@@ -23,7 +23,7 @@ print("Caricamento modello...")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Assicurati che il percorso pesi sia corretto
-weights_path = YOLO_PATH / "runs" / "train" / "exp59" / "weights" / "best.pt"
+weights_path = YOLO_PATH / "runs" / "train" / "pippa" / "weights" / "best.pt"
 
 # Caricamento modello
 model = torch.hub.load(str(YOLO_PATH), 'custom', path=str(weights_path), source='local')

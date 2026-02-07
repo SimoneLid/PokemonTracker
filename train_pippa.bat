@@ -1,0 +1,1 @@
+python yolov5/train.py --epochs 3 --batch-size -1 --data models/stream.yaml --weights yolov5s.pt --workers 0 --device 0 --freeze 10 --name pippa --cache disk --img 960 --exists-ok

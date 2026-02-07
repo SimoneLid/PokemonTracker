@@ -1,0 +1,1 @@
+python -m tensorboard.main --logdir yolov5\runs\train
