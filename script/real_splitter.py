@@ -4,15 +4,15 @@ import random
 from pathlib import Path
 
 # --- CONFIGURAZIONE ---
-SOURCE_DIR = "dataset_single_v3"  # La tua cartella attuale
-DEST_DIR = "dataset_single_v3_final_split"  # La nuova cartella che verrà creata
+SOURCE_DIR = "dataset_stream"  # La tua cartella attuale
+DEST_DIR = "dataset_stream_final"  # La nuova cartella che verrà creata
 
 # Imposta il seed per rendere lo split riproducibile (sempre uguale se rilanci)
 random.seed(42)
 
 # Definisci quali video vanno nel VAL (esclusi background e video 07)
 # Esempio: Video 00, 01, 02, 03 -> TRAIN. Video 04, 05 -> VAL.
-VAL_VIDEOS = ['03', '05'] 
+VAL_VIDEOS = ['02'] 
 
 def setup_directories():
     """Crea la struttura delle cartelle vuote"""
@@ -34,13 +34,13 @@ def is_background(label_path):
 
 def get_video_id(filename):
     """Estrae l'ID del video dal nome file.
-    Esempio: frame_000260_Zona_2_01.jpg -> '01'
+    Esempio: 01_frame_000260.jpg -> '01'
     """
     name_without_ext = os.path.splitext(filename)[0]
     # Splitta per '_' e prende l'ultima parte
     parts = name_without_ext.split('_')
     if parts:
-        return parts[-1]
+        return parts[0]
     return "unknown"
 
 def process_dataset():
@@ -84,15 +84,9 @@ def process_dataset():
         else:
             # 2. Analisi Video ID
             vid_id = get_video_id(filename)
+
             
-            if vid_id == '07':
-                # Caso speciale Patrat: 80% Train, 20% Val (Random)
-                if random.random() < 0.20:
-                    destination_split = "val"
-                else:
-                    destination_split = "train"
-            
-            elif vid_id in VAL_VIDEOS:
+            if vid_id in VAL_VIDEOS:
                 # Video interi dedicati alla validazione
                 destination_split = "val"
             

@@ -373,7 +373,7 @@ if __name__ == "__main__":
     
     video_path = argv[1]
     model_path = argv[2]
-    output_dir = argv[3]
+    output_dir = argv[3] + "/train"
 
     annotator = VideoAnnotator(video_path, model_path, output_dir)
     annotator.run()
