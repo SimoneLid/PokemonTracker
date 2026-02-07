@@ -20,15 +20,15 @@ from utils.augmentations import letterbox
 # --- 2. CARICAMENTO MODELLO ---
 print("Caricamento modello...")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-weights_path = YOLO_PATH / "runs" / "train" / "exp29" / "weights" / "best.pt" 
+weights_path = YOLO_PATH / "runs" / "train" / "exp34" / "weights" / "best.pt" 
 
 model = torch.hub.load(str(YOLO_PATH), 'custom', path=str(weights_path), source='local')
 model.to(device).eval()
 
 # --- 3. CARICAMENTO IMMAGINI ---
-path_img_t_minus_1 = "Test_predict/frame_000067_Zona_2_02.jpg"
-path_img_t = "Test_predict/frame_000068_Zona_2_02.jpg"
-path_img_output = "Test_predict/frame_000069_Zona_2_02.jpg"
+path_img_t_minus_1 = "Test_predict/09_frame_000426.jpg"
+path_img_t = "Test_predict/09_frame_000426.jpg"
+path_img_output = "Test_predict/09_frame_000426.jpg"
 
 img1 = cv2.imread(path_img_t_minus_1)
 img2 = cv2.imread(path_img_t)

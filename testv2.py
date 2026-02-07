@@ -8,50 +8,42 @@ import numpy as np
 from sys import argv
 
 # --- 1. CONFIGURAZIONE PATH E IMPORT ---
-# Ottieni il percorso assoluto della cartella corrente
 FILE = Path(__file__).resolve()
-ROOT = FILE.parents[0]  # Cartella ComputerVision
-
-# Aggiungi la cartella 'yolov5' al system path
+ROOT = FILE.parents[0] 
 YOLO_PATH = ROOT / "yolov5"
 if str(YOLO_PATH) not in sys.path:
     sys.path.append(str(YOLO_PATH))
 
-# Import specifici di YOLOv5
-from utils.general import non_max_suppression, scale_boxes #type: ignore
-from utils.plots import Annotator, colors #type: ignore
-from utils.augmentations import letterbox #type: ignore
+from utils.general import non_max_suppression, scale_boxes 
+from utils.plots import Annotator, colors 
+from utils.augmentations import letterbox 
 
 # --- 2. CARICAMENTO MODELLO ---
 print("Caricamento modello...")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Percorso pesi (adattato per puntare dentro la cartella yolov5 se necessario)
-# Se runs è dentro yolov5, usiamo YOLO_PATH / ...
-weights_path = YOLO_PATH / "runs" / "train" / "exp26" / "weights" / "best.pt" #argv[2] 
+# Assicurati che il percorso pesi sia corretto
+weights_path = YOLO_PATH / "runs" / "train" / "exp59" / "weights" / "best.pt"
 
-# Caricamento con torch.hub locale
-# path=str(YOLO_PATH) dice a torch di cercare il codice sorgente nella cartella yolov5
+# Caricamento modello
 model = torch.hub.load(str(YOLO_PATH), 'custom', path=str(weights_path), source='local')
 model.to(device).eval()
 
 print(f"Modello caricato su {device}")
 
 # --- 3. CONFIGURAZIONE VIDEO ---
-video_path = argv[1]  #"videos/test/Zona_2_09.mp4"
+# Gestione argomento da riga di comando o default
+video_path = argv[1]
 cap = cv2.VideoCapture(video_path)
-WINDOW_NAME = "Supervisione 6-Canali"
+WINDOW_NAME = "Supervisione 3-Canali (Standard)"
 
-# Variabili di stato
-prev_frame = None  # Buffer per il frame t-1
-img_size = 640     # Dimensione input (deve combaciare col training)
+img_size = 640  # Dimensione input
 frame_count = 0
 
 print("Inizio inferenza. Premi 'q' per uscire.")
 
 # --- 4. LOOP PRINCIPALE ---
 while cap.isOpened():
-    # Timer start
     t0 = time.time()
     
     success, frame = cap.read()
@@ -62,45 +54,37 @@ while cap.isOpened():
     frame_count += 1
     frame_orig = frame.copy()
 
-    # --- A. PRE-PROCESSING (Letterbox + Stacking) ---
-    # Ridimensiona mantenendo aspect ratio
+    # --- A. PRE-PROCESSING (Adattato al tuo __getitem__) ---
+    # 1. Letterbox (ridimensionamento con padding)
     img_resized = letterbox(frame, img_size, stride=32, auto=False)[0]
 
-    # Gestione primo frame (se non c'è storico, duplica il frame attuale)
-    if prev_frame is None:
-        prev_frame = img_resized
-
-    # Creazione stack 6 canali: (t-1) + (t)
-    img_stacked = np.concatenate((prev_frame, img_resized), axis=2)
-    
+    # 2. Trasformazioni colori e assi (Come nel tuo __getitem__)
     # HWC to CHW, BGR to RGB
-    img_tensor = img_stacked.transpose((2, 0, 1))[::-1] 
+    img_tensor = img_resized.transpose((2, 0, 1))[::-1] 
     img_tensor = np.ascontiguousarray(img_tensor)
     
-    # Da Numpy a Torch Tensor
+    # 3. Da Numpy a Torch Tensor
     img_tensor = torch.from_numpy(img_tensor).to(device)
     img_tensor = img_tensor.float() / 255.0  # Normalizza 0-1
     
     if len(img_tensor.shape) == 3:
-        img_tensor = img_tensor[None]  # Aggiungi batch dimension (1, 6, 640, 640)
+        img_tensor = img_tensor[None]  # Aggiungi batch dimension (1, 3, 640, 640)
     
-    t1 = time.time() # Fine Pre-proc
+    t1 = time.time()
 
     # --- B. INFERENZA ---
     with torch.no_grad():
         pred = model(img_tensor)
     
-    t2 = time.time() # Fine Inference
+    t2 = time.time()
 
     # --- C. POST-PROCESSING (NMS) ---
     pred = non_max_suppression(pred, conf_thres=0.25, iou_thres=0.45)
     
-    t3 = time.time() # Fine NMS
+    t3 = time.time()
 
     # --- D. DISEGNO E LOGGING ---
     det = pred[0]
-    
-    # Costruzione stringa di log
     s = f"Frame {frame_count}: "
     
     annotator = Annotator(frame_orig, line_width=2, example=str(model.names))
@@ -129,15 +113,11 @@ while cap.isOpened():
     dt_inf = (t2 - t1) * 1000
     dt_nms = (t3 - t2) * 1000
     
-    # Stampa log
     print(f"{s} Done. ({dt_inf:.1f}ms inf, {dt_nms:.1f}ms NMS)")
-
-    # Aggiorna buffer per il prossimo giro
-    prev_frame = img_resized
 
     # Mostra video
     cv2.imshow(WINDOW_NAME, final_frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
+    if cv2.waitKey(10) & 0xFF == ord("q"):
         break
 
 cap.release()
