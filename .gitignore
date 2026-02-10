@@ -11,5 +11,6 @@ images_all/
 temp_data.txt
 dataset*/**/images
 flow.md
+train.bat
 *.npy
 *.log
