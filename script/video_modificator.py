@@ -181,7 +181,7 @@ class VideoAnnotator:
                         self.current_boxes.append([x1, y1, x2, y2, cls, None])
         else:
             self.is_saved = False
-            results = self.model(self.frame, conf=0.2, verbose=False, half=True)
+            results = self.model(self.frame, conf=0.2, verbose=False, half=False)
             for box in results[0].boxes:
                 coords = box.xyxy[0].cpu().numpy().astype(int)
                 cls = int(box.cls[0].cpu().numpy())
