@@ -1,0 +1,30 @@
+# ... altri parametri ...
+lr0: 0.01
+lrf: 0.01
+momentum: 0.937
+weight_decay: 0.0005
+warmup_epochs: 3.0       # 3 epoche sono sufficienti per YOLOv5 solitamente
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+box: 0.05
+cls: 0.5
+cls_pw: 1.0
+obj: 1.0
+obj_pw: 1.0
+iou_t: 0.20
+anchor_t: 4.0
+# --- AUGMENTATION ---
+fl_gamma: 0.0
+hsv_h: 0.015      # Mantieni basso per non cambiare il colore della "pelle" del pokemon
+hsv_s: 0.7        # AUMENTA: simula colori più o meno vividi
+hsv_v: 0.4        # AUMENTA: simula luce e ombra
+degrees: 10.0     # Leggero aumento per simulare telecamera non perfettamente dritta
+translate: 0.1
+scale: 0.5        # Va bene, i pokemon cambiano dimensione
+shear: 0.0
+perspective: 0.0
+flipud: 0.0       # I pokemon non camminano a testa in giù
+fliplr: 0.5       # FONDAMENTALE: Simula vista speculare
+mosaic: 1.0       # FONDAMENTALE: Attiva il mosaico!
+mixup: 0.1        # Prova leggera, aiuta nelle folle di pokemon
+copy_paste: 0.0
