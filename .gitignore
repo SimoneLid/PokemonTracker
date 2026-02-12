@@ -14,5 +14,8 @@ flow.md
 train.bat
 dataset_stream/test
 train*.py
+grafico.py
+grafici*
+pippa.bat
 *.npy
 *.log

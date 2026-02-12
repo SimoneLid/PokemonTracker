@@ -115,7 +115,6 @@ for f in files:
         f"--weights {f} "
         f"--data {data_yaml} "
         f"--img {img_size} "
-        f"--conf {conf_thres} "
         f"--project {project_dir_base} "
         f"--name {run_name} "
         f"--exist-ok"
@@ -124,3 +123,5 @@ for f in files:
     os.system(cmd)
 
 print(f"\nFinito! Trovi tutti i grafici nella cartella: {project_dir_base}")
+
+#py -3.10 yolov5/val.py --weights yolov5\runs\train\pippa3\weights\best.pt --data models/stream.yaml --img 640 --conf 0.25 --project yolov5\runs\train\pippa3 --name  best --exist-ok"
