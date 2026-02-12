@@ -4,7 +4,7 @@ import torch
 import cv2
 import numpy as np
 
-# --- 1. CONFIGURAZIONE PATH E IMPORT ---
+# --- 1. PATH SETUP & IMPORTS ---
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0].parents[0]
 YOLO_PATH = ROOT / "yolov5"
@@ -13,104 +13,102 @@ print(f"YOLO_PATH: {YOLO_PATH}")
 if str(YOLO_PATH) not in sys.path:
     sys.path.append(str(YOLO_PATH))
 
-from utils.general import non_max_suppression, scale_boxes
+from models.common import DetectMultiBackend
+from utils.general import non_max_suppression, scale_boxes, check_img_size
 from utils.plots import Annotator, colors
 from utils.augmentations import letterbox
+from utils.torch_utils import select_device
 
-# --- 2. CARICAMENTO MODELLO ---
+# --- 2. LOAD MODEL (raw, no AutoShape wrapper) ---
 print("Caricamento modello...")
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-weights_path = YOLO_PATH / "runs" / "train" / "exp34" / "weights" / "best.pt" 
+device = select_device('0' if torch.cuda.is_available() else 'cpu')
+weights_path = "models/single_v4.pt"
 
-model = torch.hub.load(str(YOLO_PATH), 'custom', path=str(weights_path), source='local')
-model.to(device).eval()
+model = DetectMultiBackend(str(weights_path), device=device)
+stride = int(model.stride)
+names = model.names
+img_size = check_img_size(640, s=stride)
+model.eval()
 
-# --- 3. CARICAMENTO IMMAGINI ---
-path_img_t_minus_1 = "Test_predict/09_frame_000426.jpg"
-path_img_t = "Test_predict/09_frame_000426.jpg"
-path_img_output = "Test_predict/09_frame_000426.jpg"
+# --- 3. LOAD IMAGES ---
+# T-1 = support frame, T = current frame, T+1 = ground truth (for visual comparison)
+path_img_t_minus_1 = ROOT / "Test_predict" / "09_frame_000426.jpg"
+path_img_t         = ROOT / "Test_predict" / "09_frame_000427.jpg"
+path_img_output    = ROOT / "Test_predict" / "09_frame_000428.jpg"
 
-img1 = cv2.imread(path_img_t_minus_1)
-img2 = cv2.imread(path_img_t)
-img3 = cv2.imread(path_img_output)
+img_support_orig = cv2.imread(str(path_img_t_minus_1))  # T-1 (support)
+img_current_orig = cv2.imread(str(path_img_t))           # T   (current)
+img_next_orig    = cv2.imread(str(path_img_output))      # T+1 (visual reference)
 
-if img1 is None or img2 is None or img3 is None:
+if img_support_orig is None or img_current_orig is None or img_next_orig is None:
     print("Errore: Impossibile caricare le immagini.")
     sys.exit()
 
-# --- 4. PRE-PROCESSING (6 CANALI) ---
-img_size = 640
-img1_res = letterbox(img1, img_size, stride=32, auto=False)[0]
-img2_res = letterbox(img2, img_size, stride=32, auto=False)[0]
+# --- 4. PRE-PROCESSING ---
+def preprocess(img_bgr, img_size, stride):
+    """Letterbox + BGR->RGB + HWC->CHW + normalize -> (1, 3, H, W) tensor."""
+    img_lb = letterbox(img_bgr, img_size, stride=stride, auto=False)[0]
+    img_rgb = img_lb[:, :, ::-1]  # BGR -> RGB
+    img_chw = np.ascontiguousarray(img_rgb.transpose((2, 0, 1)))  # HWC -> CHW
+    tensor = torch.from_numpy(img_chw).to(device).float() / 255.0
+    return tensor.unsqueeze(0)  # (1, 3, H, W)
 
-img_tensor = img1_res.transpose((2, 0, 1))[::-1] 
-img_tensor = np.ascontiguousarray(img_tensor)
-img_tensor = torch.from_numpy(img_tensor).to(device).float() / 255.0
-img_tensor = img_tensor[None]
+t_support = preprocess(img_support_orig, img_size, stride)  # (1, 3, 640, 640)
+t_current = preprocess(img_current_orig, img_size, stride)  # (1, 3, 640, 640)
 
-# --- 5. INFERENZA ---
+# Concatenate: 6ch = [current | support] — same order as training dataloader
+img_6ch = torch.cat([t_current, t_support], dim=1)  # (1, 6, 640, 640)
+
+# --- 5. INFERENCE (6ch -> DFP fuses current + support -> predicts T+1) ---
+# Model sees (T, T-1) and predicts bounding boxes for T+1 (future frame)
+print(f"Input shape: {img_6ch.shape}")
 with torch.no_grad():
-    pred = model(img_tensor)
+    pred = model(img_6ch)
 
+# NMS
 pred = non_max_suppression(pred, conf_thres=0.25, iou_thres=0.45)
 det = pred[0]
+print(f"Detections: {len(det)}")
 
-img_tensor = img2_res.transpose((2, 0, 1))[::-1] 
-img_tensor = np.ascontiguousarray(img_tensor)
-img_tensor = torch.from_numpy(img_tensor).to(device).float() / 255.0
-img_tensor = img_tensor[None]
-
-with torch.no_grad():
-    pred = model(img_tensor)
-
-pred = non_max_suppression(pred, conf_thres=0.25, iou_thres=0.45)
-det = pred[0]
-# --- 6. DISEGNO SU TUTTE E TRE LE IMMAGINI ---
-# Creiamo tre copie separate per l'output
-out1, out2, out3 = img1.copy(), img2.copy(), img3.copy()
+# --- 6. DRAW PREDICTIONS ON ALL THREE IMAGES ---
+out1 = img_support_orig.copy()  # T-1
+out2 = img_current_orig.copy()  # T
+out3 = img_next_orig.copy()     # T+1 (predictions are FOR this frame)
 
 if len(det):
-    # Dobbiamo riscalare i box per ogni immagine (nel caso abbiano risoluzioni diverse)
-    # Copiamo le det per non sovrascrivere le coordinate originali durante il loop
     for i, target_img in enumerate([out1, out2, out3]):
-        # Riscaliamo i box sulle dimensioni dell'immagine corrente
         curr_det = det.clone()
-        curr_det[:, :4] = scale_boxes(img_tensor.shape[2:], curr_det[:, :4], target_img.shape).round()
-        
-        annotator = Annotator(target_img, line_width=3, example=str(model.names))
+        curr_det[:, :4] = scale_boxes(img_6ch.shape[2:], curr_det[:, :4], target_img.shape).round()
+
+        annotator = Annotator(target_img, line_width=3, example=str(names))
         for *xyxy, conf, cls in reversed(curr_det):
-            label = f'{model.names[int(cls)]} {conf:.2f}'
+            label = f'{names[int(cls)]} {conf:.2f}'
             annotator.box_label(xyxy, label, color=colors(int(cls), True))
-        
-        # Aggiorniamo l'immagine con i disegni
+
         if i == 0: out1 = annotator.result()
         elif i == 1: out2 = annotator.result()
         elif i == 2: out3 = annotator.result()
 
-# --- 7. COLLAGE OTTIMIZZATO (640x480) ---
-W_PANEL = 640 
-H_PANEL = 480 
-WINDOW_NAME = "6-CHANNELS DEBUG: LABELS ON ALL IMAGES"
+# --- 7. DISPLAY COLLAGE ---
+W_PANEL = 640
+H_PANEL = 480
+WINDOW_NAME = "StreamYOLO DFP: 6ch Inference"
 
-# Ridimensionamento
 v1 = cv2.resize(out1, (W_PANEL, H_PANEL), interpolation=cv2.INTER_AREA)
 v2 = cv2.resize(out2, (W_PANEL, H_PANEL), interpolation=cv2.INTER_AREA)
 v3 = cv2.resize(out3, (W_PANEL, H_PANEL), interpolation=cv2.INTER_AREA)
 
-# Testi informativi
 font = cv2.FONT_HERSHEY_DUPLEX
 f_size = 0.8
-cv2.putText(v1, "IMG 1 (T-1)", (15, 35), font, f_size, (255, 255, 255), 2)
-cv2.putText(v2, "IMG 2 (T)", (15, 35), font, f_size, (255, 255, 255), 2)
-cv2.putText(v3, "IMG 3 (NEXT)", (15, 35), font, f_size, (0, 0, 255), 2)
+cv2.putText(v1, "SUPPORT (T-1)", (15, 35), font, f_size, (255, 200, 0), 2)
+cv2.putText(v2, "CURRENT (T) — INPUT", (15, 35), font, f_size, (0, 255, 0), 2)
+cv2.putText(v3, "NEXT (T+1) — PREDICTED TARGET", (15, 35), font, f_size, (0, 0, 255), 2)
 
-# Unione orizzontale
 debug_collage = np.hstack((v1, v2, v3))
 
-# --- 8. VISUALIZZAZIONE ---
 cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_AUTOSIZE)
 cv2.imshow(WINDOW_NAME, debug_collage)
 
-print("Visualizzazione completa. Premi un tasto per chiudere.")
+print("Premi un tasto per chiudere.")
 cv2.waitKey(0)
 cv2.destroyAllWindows()
