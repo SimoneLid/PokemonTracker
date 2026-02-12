@@ -1,7 +1,8 @@
 models/*.engine
 models/*.onnx
 models/yolo*
-yolo*
+yolov5_normal
+yolo*.pt
 *.cache*
 runs/
 __pycache__/

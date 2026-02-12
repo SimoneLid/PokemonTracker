@@ -1,0 +1,3 @@
+[submodule "yolov5"]
+	path = yolov5
+	url = https://github.com/Alby7503/yolov5
