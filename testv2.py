@@ -9,36 +9,51 @@ from sys import argv
 
 # --- 1. CONFIGURAZIONE PATH E IMPORT ---
 FILE = Path(__file__).resolve()
-ROOT = FILE.parents[0] 
+ROOT = FILE.parents[0]
 YOLO_PATH = ROOT / "yolov5"
 if str(YOLO_PATH) not in sys.path:
     sys.path.append(str(YOLO_PATH))
 
-from utils.general import non_max_suppression, scale_boxes 
-from utils.plots import Annotator, colors 
-from utils.augmentations import letterbox 
+from utils.general import non_max_suppression, scale_boxes
+from utils.plots import Annotator, colors
+from utils.augmentations import letterbox
 
 # --- 2. CARICAMENTO MODELLO ---
 print("Caricamento modello...")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Assicurati che il percorso pesi sia corretto
-weights_path = YOLO_PATH / "runs" / "train" / "pippa" / "weights" / "best.pt"
+weights_path = YOLO_PATH / "runs" / "train" / "stream9" / "weights" / "last.pt"
 
 # Caricamento modello
-model = torch.hub.load(str(YOLO_PATH), 'custom', path=str(weights_path), source='local')
+try:
+    model = torch.hub.load(str(YOLO_PATH), 'custom', path=str(weights_path), source='local')
+except Exception as e:
+    print(f"Errore caricamento modello: {e}")
+    sys.exit(1)
+
 model.to(device).eval()
 
+# Modifica opzionale: Se il modello è stato salvato con una struttura specifica che richiede
+# di sapere che accetta 6 canali, a volte è necessario forzarlo, ma solitamente
+# il caricamento dei pesi 'custom' gestisce già la shape del primo layer.
 print(f"Modello caricato su {device}")
 
 # --- 3. CONFIGURAZIONE VIDEO ---
-# Gestione argomento da riga di comando o default
-video_path = argv[1]
+if len(argv) > 1:
+    video_path = argv[1]
+else:
+    print("Errore: specifica il percorso del video come argomento.")
+    sys.exit(1)
+
 cap = cv2.VideoCapture(video_path)
-WINDOW_NAME = "Supervisione 3-Canali (Standard)"
+WINDOW_NAME = "Supervisione 6-Canali (StreamYOLO)"
 
 img_size = 640  # Dimensione input
 frame_count = 0
+
+# Variabile per memorizzare il frame precedente (il "support frame" del getitem)
+prev_frame_tensor = None
 
 print("Inizio inferenza. Premi 'q' per uscire.")
 
@@ -54,32 +69,51 @@ while cap.isOpened():
     frame_count += 1
     frame_orig = frame.copy()
 
-    # --- A. PRE-PROCESSING (Adattato al tuo __getitem__) ---
+    # --- A. PRE-PROCESSING (Adattato al getitem StreamYOLO) ---
     # 1. Letterbox (ridimensionamento con padding)
+    # Nota: auto=False è fondamentale perché il modello si aspetta dimensioni fisse
     img_resized = letterbox(frame, img_size, stride=32, auto=False)[0]
 
-    # 2. Trasformazioni colori e assi (Come nel tuo __getitem__)
+    # 2. Trasformazioni colori e assi
     # HWC to CHW, BGR to RGB
-    img_tensor = img_resized.transpose((2, 0, 1))[::-1] 
-    img_tensor = np.ascontiguousarray(img_tensor)
+    img_numpy = img_resized.transpose((2, 0, 1))[::-1] 
+    img_numpy = np.ascontiguousarray(img_numpy)
     
-    # 3. Da Numpy a Torch Tensor
-    img_tensor = torch.from_numpy(img_tensor).to(device)
-    img_tensor = img_tensor.float() / 255.0  # Normalizza 0-1
+    # 3. Creazione Temsore Frame Corrente
+    current_tensor = torch.from_numpy(img_numpy).to(device)
+    current_tensor = current_tensor.float() / 255.0  # Normalizza 0-1
     
-    if len(img_tensor.shape) == 3:
-        img_tensor = img_tensor[None]  # Aggiungi batch dimension (1, 3, 640, 640)
+    # --- LOGICA 6 CANALI (Current + Support) ---
+    # Il dataloader fa: img6ch = np.concatenate([img, support_img], axis=0)
+    # Se è il primo frame, il "supporto" è il frame stesso (duplicazione)
     
+    if prev_frame_tensor is None:
+        support_tensor = current_tensor
+    else:
+        support_tensor = prev_frame_tensor
+
+    # Concatenazione lungo i canali (dim 0 per tensori non batchati: 3+3=6, H, W)
+    input_tensor = torch.cat((current_tensor, support_tensor), 0)
+
+    # Aggiungi batch dimension (1, 6, 640, 640)
+    if len(input_tensor.shape) == 3:
+        input_tensor = input_tensor[None]
+    
+    # Aggiorna il frame precedente per la prossima iterazione
+    # Importante: clonare o mantenere il riferimento pulito per il prossimo giro
+    prev_frame_tensor = current_tensor.clone()
+
     t1 = time.time()
 
     # --- B. INFERENZA ---
     with torch.no_grad():
-        pred = model(img_tensor)
+        # Il modello ora riceve [1, 6, 640, 640]
+        pred = model(input_tensor)
     
     t2 = time.time()
 
     # --- C. POST-PROCESSING (NMS) ---
-    pred = non_max_suppression(pred, conf_thres=0.25, iou_thres=0.45)
+    pred = non_max_suppression(pred, conf_thres=0.25, iou_thres=0.25)
     
     t3 = time.time()
 
@@ -91,7 +125,8 @@ while cap.isOpened():
 
     if len(det):
         # Riscala le box coordinate modello -> coordinate video originale
-        det[:, :4] = scale_boxes(img_tensor.shape[2:], det[:, :4], frame_orig.shape).round()
+        # Nota: usiamo img_tensor.shape[2:] che corrisponde a (H, W) del resize
+        det[:, :4] = scale_boxes(input_tensor.shape[2:], det[:, :4], frame_orig.shape).round()
 
         # Conta classi
         for c in det[:, 5].unique():
@@ -117,7 +152,7 @@ while cap.isOpened():
 
     # Mostra video
     cv2.imshow(WINDOW_NAME, final_frame)
-    if cv2.waitKey(10) & 0xFF == ord("q"):
+    if cv2.waitKey(100) & 0xFF == ord("q"):
         break
 
 cap.release()

@@ -3,6 +3,7 @@ from pathlib import Path
 import torch
 import cv2
 import numpy as np
+from sys import argv
 
 # --- 1. PATH SETUP & IMPORTS ---
 FILE = Path(__file__).resolve()
@@ -22,7 +23,7 @@ from utils.torch_utils import select_device
 # --- 2. LOAD MODEL (raw, no AutoShape wrapper) ---
 print("Caricamento modello...")
 device = select_device('0' if torch.cuda.is_available() else 'cpu')
-weights_path = "models/single_v4.pt"
+weights_path = "yolov5\\runs\\train\\stream7\\weights\\last.pt"
 
 model = DetectMultiBackend(str(weights_path), device=device)
 stride = int(model.stride)
@@ -31,10 +32,11 @@ img_size = check_img_size(640, s=stride)
 model.eval()
 
 # --- 3. LOAD IMAGES ---
+video_num = argv[1] if len(argv) > 1 else "09"
 # T-1 = support frame, T = current frame, T+1 = ground truth (for visual comparison)
-path_img_t_minus_1 = ROOT / "Test_predict" / "09_frame_000426.jpg"
-path_img_t         = ROOT / "Test_predict" / "09_frame_000427.jpg"
-path_img_output    = ROOT / "Test_predict" / "09_frame_000428.jpg"
+path_img_t_minus_1 = ROOT / "Test_predict" / f"{video_num}_frame_000000.jpg"
+path_img_t         = ROOT / "Test_predict" / f"{video_num}_frame_000001.jpg"
+path_img_output    = ROOT / "Test_predict" / f"{video_num}_frame_000002.jpg"
 
 img_support_orig = cv2.imread(str(path_img_t_minus_1))  # T-1 (support)
 img_current_orig = cv2.imread(str(path_img_t))           # T   (current)
