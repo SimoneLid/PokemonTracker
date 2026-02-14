@@ -59,6 +59,30 @@ def post_process(prediction, conf_thres=0.25, iou_thres=0.45):
 # ==========================================
 # 1. DATASET & LOADING UTILS
 # ==========================================
+def letterbox_image(image, size=(640, 640)):
+    """
+    Ridimensiona l'immagine mantenendo l'aspect ratio e aggiungendo padding.
+    Ritorna l'immagine trasformata e i dettagli per invertire la trasformazione.
+    """
+    iw, ih = image.size
+    w, h = size
+    scale = min(w / iw, h / ih)
+    nw = int(iw * scale)
+    nh = int(ih * scale)
+
+    # Ridimensiona mantenendo le proporzioni
+    image = image.resize((nw, nh), Image.BICUBIC)
+    
+    # Crea nuova immagine grigia (spesso 114 o 128 per YOLO)
+    new_image = Image.new('RGB', size, (114, 114, 114))
+    
+    # Incolla l'immagine ridimensionata al centro (o in alto a sinistra)
+    # Qui usiamo un padding centrato per coerenza
+    dx = (w - nw) // 2
+    dy = (h - nh) // 2
+    new_image.paste(image, (dx, dy))
+    
+    return new_image, (dx, dy), scale
 
 class StreamingDataset(Dataset):
     def __init__(self, root_dir, img_size=(640, 640), future_window=10):
@@ -69,25 +93,22 @@ class StreamingDataset(Dataset):
         self.img_dir = os.path.join(root_dir, 'images')
         self.lbl_dir = os.path.join(root_dir, 'labels')
         
-        # Carica e ordina i file per sequenza temporale
         self.img_files = sorted([f for f in os.listdir(self.img_dir) 
                                 if f.endswith(('.jpg', '.png', '.jpeg'))])
         
-        self.transform = transforms.Compose([
-            transforms.Resize(self.img_size),
-            transforms.ToTensor(),
-        ])
+        # Rimuoviamo il Resize dalla trasformazione base
+        self.to_tensor = transforms.ToTensor()
 
     def __len__(self):
         return len(self.img_files) - self.future_window - 1
 
     def _load_yolo_labels(self, label_path, img_w, img_h):
+        # (Codice identico al tuo originale)
         boxes, labels = [], []
         if os.path.exists(label_path):
             with open(label_path, 'r') as f:
                 for line in f.readlines():
                     cls, x, y, w, h = map(float, line.split())
-                    # Converti da YOLO (center_x, center_y, w, h) a COCO (x1, y1, w, h) in pixel
                     x1 = (x - w / 2) * img_w
                     y1 = (y - h / 2) * img_h
                     bw = w * img_w
@@ -97,19 +118,23 @@ class StreamingDataset(Dataset):
         return boxes, labels
 
     def __getitem__(self, idx):
-        # Frame t-1 e t
         path_prev = os.path.join(self.img_dir, self.img_files[idx])
         path_curr = os.path.join(self.img_dir, self.img_files[idx + 1])
         
-        img_prev = Image.open(path_prev).convert("RGB")
-        img_curr = Image.open(path_curr).convert("RGB")
-        orig_w, orig_h = img_curr.size
+        img_prev_pil = Image.open(path_prev).convert("RGB")
+        img_curr_pil = Image.open(path_curr).convert("RGB")
+        orig_w, orig_h = img_curr_pil.size
 
-        # Trasformazione per il modello
-        t_prev = self.transform(img_prev)
-        t_curr = self.transform(img_curr)
+        # --- APPLICA LETTERBOX ---
+        lb_prev, _, _ = letterbox_image(img_prev_pil, self.img_size)
+        # Salviamo i metadati solo del frame corrente (serve per le predizioni)
+        lb_curr, pad, scale = letterbox_image(img_curr_pil, self.img_size)
 
-        # Caricamento Ground Truth per i frame futuri
+        # Trasformazione in Tensore
+        t_prev = self.to_tensor(lb_prev)
+        t_curr = self.to_tensor(lb_curr)
+
+        # Caricamento Ground Truth
         future_gts = []
         for i in range(1, self.future_window + 1):
             f_idx = idx + 1 + i
@@ -117,64 +142,95 @@ class StreamingDataset(Dataset):
             lbl_path = os.path.join(self.lbl_dir, lbl_name)
             boxes, labels = self._load_yolo_labels(lbl_path, orig_w, orig_h)
             future_gts.append({'boxes': boxes, 'labels': labels, 'width': orig_w, 'height': orig_h})
-
-        return t_prev, t_curr, future_gts, idx + 1
+        
+        # Ritorna anche 'meta' per poter scalare le coordinate indietro
+        meta = {'pad': pad, 'scale': scale, 'orig_shape': (orig_w, orig_h)}
+        
+        return t_prev, t_curr, future_gts, idx + 1, meta
 
 # ==========================================
 # 2. EVALUATOR CORE
 # ==========================================
+def scale_coords(coords, pad, scale, img_shape):
+    """
+    Riporta le coordinate dalla dimensione letterbox (640x640 con bordi) 
+    alla dimensione originale immagine.
+    coords: [x1, y1, x2, y2]
+    """
+    # Rimuovi padding
+    coords[:, 0] -= pad[0]  # x padding
+    coords[:, 2] -= pad[0]
+    coords[:, 1] -= pad[1]  # y padding
+    coords[:, 3] -= pad[1]
+    
+    # Scala
+    coords[:, :4] /= scale
+    
+    # Clip coordinate per sicurezza (non uscire dall'immagine originale)
+    coords[:, 0].clamp_(0, img_shape[0])  # x1
+    coords[:, 1].clamp_(0, img_shape[1])  # y1
+    coords[:, 2].clamp_(0, img_shape[0])  # x2
+    coords[:, 3].clamp_(0, img_shape[1])  # y2
+    
+    return coords
 
 class SAPEvaluator:
     def __init__(self, categories):
+        # ... (identico a prima) ...
         self.categories = categories
         self.dataset = {"images": [], "annotations": [], "categories": categories}
         self.predictions = []
         self.ann_id_counter = 1
 
-    def add_data(self, frame_id, gt, detections, img_size=(640, 640)):
+    def add_data(self, frame_id, gt, detections, meta):
         """
-        gt: dizionario con i ground truth
-        detections: tensore [N, 6] -> [x1, y1, x2, y2, conf, cls]
+        meta: dizionario ritornato dal dataloader {'pad': (dx,dy), 'scale': s, 'orig_shape': (w,h)}
         """
-        # Aggiungi l'immagine al dataset COCO
+        # Aggiungi immagine
         self.dataset["images"].append({
             "id": frame_id, 
             "width": gt['width'], 
             "height": gt['height']
         })
 
-        # Aggiungi i Ground Truth
+        # Aggiungi GT (identico a prima)
         for box, lbl in zip(gt['boxes'], gt['labels']):
             self.dataset["annotations"].append({
                 "id": self.ann_id_counter,
                 "image_id": frame_id,
                 "category_id": int(lbl),
-                "bbox": box, # [x, y, w, h]
+                "bbox": box,
                 "area": box[2] * box[3],
                 "iscrowd": 0
             })
             self.ann_id_counter += 1
 
-        # Aggiungi le Predizioni
-        # Calcoliamo il fattore di scala se l'immagine originale era diversa da 640x640
-        gain_w = gt['width'] / img_size[0]
-        gain_h = gt['height'] / img_size[1]
+        # --- CORREZIONE SCALING ---
+        if detections is not None and len(detections) > 0:
+            # Clona per non modificare l'originale in place
+            det_scaled = detections.clone()
+            
+            # Applica la funzione inversa del letterbox
+            # Nota: det_scaled[:, :4] sono x1, y1, x2, y2
+            pad = meta['pad']
+            scale = meta['scale']
+            orig_wh = meta['orig_shape']
+            
+            det_scaled[:, :4] = scale_coords(det_scaled[:, :4], pad, scale, orig_wh)
 
-        # detections è un tensore [N, 6]
-        for i in range(detections.shape[0]):
-            det = detections[i]
-            x1, y1, x2, y2, conf, cls = det.tolist()
-            
-            # Converti da [x1, y1, x2, y2] a [x, y, w, h] e scala su dimensione originale
-            w = (x2 - x1) * gain_w
-            h = (y2 - y1) * gain_h
-            
-            self.predictions.append({
-                "image_id": frame_id,
-                "category_id": int(cls),
-                "bbox": [x1 * gain_w, y1 * gain_h, w, h],
-                "score": float(conf)
-            })
+            for i in range(det_scaled.shape[0]):
+                x1, y1, x2, y2, conf, cls = det_scaled[i].tolist()
+                
+                # Converti in COCO [x, y, w, h]
+                w = x2 - x1
+                h = y2 - y1
+                
+                self.predictions.append({
+                    "image_id": frame_id,
+                    "category_id": int(cls),
+                    "bbox": [x1, y1, w, h],
+                    "score": float(conf)
+                })
 
     def finalize(self):
         coco_gt = COCO()
@@ -198,6 +254,7 @@ def run_streaming_eval(yolo_dir, weights_path, data_root, fps=30):
 
     # Carica Modello
     model = torch.hub.load(yolo_dir, 'custom', path=weights_path, source='local')
+    model = model.model
     model.to(device).eval()
 
     dataset = StreamingDataset(data_root)
@@ -210,7 +267,7 @@ def run_streaming_eval(yolo_dir, weights_path, data_root, fps=30):
 
 
     with torch.no_grad():
-        for t_prev, t_curr, future_gts, frame_id in dataloader:
+        for t_prev, t_curr, future_gts, frame_id, meta in dataloader:
             # --- Inizio Misurazione Latenza ---
             start_time = time.perf_counter()
             
@@ -239,7 +296,7 @@ def run_streaming_eval(yolo_dir, weights_path, data_root, fps=30):
             shift = max(0, delay_frames - 1)
 
             if shift < len(future_gts):
-                evaluator.add_data(frame_id, future_gts[shift], detections)
+                evaluator.add_data(frame_id, future_gts[shift], detections, meta)
 
     # Risultati Finali
     stats = evaluator.finalize()
