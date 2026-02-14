@@ -23,7 +23,7 @@ print("Caricamento modello...")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Assicurati che il percorso pesi sia corretto
-weights_path = YOLO_PATH / "runs" / "train" / "stream9" / "weights" / "last.pt"
+weights_path = YOLO_PATH / "runs" / "train" / "stream20" / "weights" / "best.pt"
 
 # Caricamento modello
 try:
@@ -152,7 +152,7 @@ while cap.isOpened():
 
     # Mostra video
     cv2.imshow(WINDOW_NAME, final_frame)
-    if cv2.waitKey(100) & 0xFF == ord("q"):
+    if cv2.waitKey(250) & 0xFF == ord("q"):
         break
 
 cap.release()
