@@ -1,38 +1,35 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: --- CONFIGURAZIONE ---
 set MIN=5
 set MAX=9
-set DATA_PATH=dataset_stream/val
+set DATASET_PATH=dataset_stream/val
 
-echo Inizio scansione profonda modelli da stream%MIN% a stream%MAX%...
+
+echo Scan from stream%MIN% to stream%MAX%
 echo.
 
-:: 1. Ciclo sugli stream (es. stream1, stream2...)
+:: Cicle all the streams
 for /L %%i in (%MIN%, 1, %MAX%) do (
-    set "CURRENT_WEIGHTS_DIR=yolov5\runs\train\stream%%i\weights"
+    set "WEIGHTS_DIR=yolov5\runs\train\stream%%i\weights"
     
-    echo =======================================================
-    echo ANALISI CARTELLA: !CURRENT_WEIGHTS_DIR!
-    echo =======================================================
+    echo CURRENT DIR: !WEIGHTS_DIR!
 
-    if exist "!CURRENT_WEIGHTS_DIR!" (
-        :: 2. Ciclo su tutti i file .pt nella cartella weights
-        for %%f in ("!CURRENT_WEIGHTS_DIR!\*.pt") do (
-            set "FULL_PATH=%%f"
-            echo.
-            echo [TESTING] Modello: %%~nxf
+    if exist "!WEIGHTS_DIR!" (
+        :: Cicle for all the weights
+        for %%f in ("!WEIGHTS_DIR!\*.pt") do (
+            set "WEIGHT_PATH=%%f"
             
-            :: Esecuzione script Python
-            python scripts/metrics.py --weights "!FULL_PATH!" --data "%DATA_PATH%"
+            echo [TESTING] Model: %%~nxf
+            
+            python scripts/metrics.py --weights "!WEIGHT_PATH!" --data "%DATASET_PATH%"
         )
     ) else (
-        echo [ERRORE] Cartella non trovata: !CURRENT_WEIGHTS_DIR!
+        echo [ERROR] Dir not found: !WEIGHTS_DIR!
     )
     echo.
 )
 
 echo.
-echo Tutte le valutazioni sono state completate.
+echo All metrics created
 pause

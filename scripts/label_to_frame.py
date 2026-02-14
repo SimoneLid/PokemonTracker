@@ -4,39 +4,33 @@ import re
 import glob
 from sys import argv
 
-# --- CONFIGURAZIONE ---
-# Assicurati di passare il percorso dataset come primo argomento
-if len(argv) < 2:
-    print("ERRORE: Specifica il percorso del dataset come argomento.")
-    exit()
 
-DATASET_ROOT = argv[1]  # La cartella che contiene train e val
-VIDEOS_DIR = os.path.join("videos", "used") # Dove si trovano i video sorgente
-EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv'] # Estensioni video supportate
+DATASET_ROOT = argv[1]
+VIDEOS_DIR = os.path.join("videos", "used")
 
-# Regex per parsare il nome file: xy_frame_counter
+# Regex for filenames: xy_frame_counter
 FILENAME_REGEX = re.compile(r"^(\d+)_(frame_\d+)\.txt$")
 
-def get_video_map(video_folder):
+def get_video_map(video_dir):
     """
-    Crea una mappa {nome_video_senza_ext: percorso_completo}
+    Create a dict that for each video has: {video_name: video_path}
     """
     video_map = {}
-    if not os.path.exists(video_folder):
-        print(f"[ERRORE] La cartella video non esiste: {video_folder}")
+    if not os.path.exists(video_dir):
+        print(f"[ERROR] video dir not exists: {video_dir}")
         return video_map
 
-    for f in os.listdir(video_folder):
-        name, ext = os.path.splitext(f)
-        if ext.lower() in EXTENSIONS:
-            video_map[name] = os.path.join(video_folder, f)
+    for video in os.listdir(video_dir):
+        name, ext = os.path.splitext(video)
+        if ext == ".mp4":
+            video_map[name] = os.path.join(video_dir, video)
     
-    print(f"--- Trovati {len(video_map)} video sorgente in {video_folder} ---")
+    print(f"Found {len(video_map)} videos")
     return video_map
 
-def scan_labels_and_build_tasks(dataset_root):
+def build_tasks(dataset_root):
     """
-    Scansiona train e val e raggruppa le richieste per video.
+    Check each label in train and val and create a task dict that contains all the frame to extract for each video
     """
     tasks = {}
     
@@ -48,8 +42,6 @@ def scan_labels_and_build_tasks(dataset_root):
         
         if not os.path.exists(labels_dir):
             continue
-
-        print(f"Scansione label in: {labels_dir}...")
         
         txt_files = glob.glob(os.path.join(labels_dir, "*.txt"))
         
@@ -59,110 +51,99 @@ def scan_labels_and_build_tasks(dataset_root):
             match = FILENAME_REGEX.match(filename)
             if match:
                 frame_num_str = match.group(2).split('_')[1]
-                video_name = f"Zona_2_{match.group(1)}" #help
-                frame_idx = int(frame_num_str)
+                video_name = f"Zona_2_{match.group(1)}"
+                frame_id = int(frame_num_str)
                 
                 img_name = filename.replace(".txt", ".jpg")
-                dest_path = os.path.join(images_dir, img_name)
+                image_path = os.path.join(images_dir, img_name)
                 
                 if video_name not in tasks:
                     tasks[video_name] = []
                 
                 tasks[video_name].append({
-                    'frame_idx': frame_idx,
-                    'dest_path': dest_path
+                    'frame_id': frame_id,
+                    'image_path': image_path
                 })
             else:
-                # print(f"[WARN] Nome file non valido ignorato: {filename}")
                 pass
 
     return tasks
 
 def extract_frames(tasks, video_map):
-    print("\n--- Inizio Estrazione Frame (Modalità Sequenziale) ---")
+    print("\n--- Extracting frames ---")
     
-    total_extracted = 0
-    total_skipped = 0
+    frame_extracted = 0
+    frame_skipped = 0
     
     for video_name, requests in tasks.items():
-        # 1. Check video
         if video_name not in video_map:
-            print(f"[ERRORE] Video non trovato: {video_name}. Saltati {len(requests)} frame.")
+            print(f"[ERROR] Video not found: {video_name}. Skipped {len(requests)} frames.")
             continue
             
         video_path = video_map[video_name]
         
-        # 2. Filtra richieste già soddisfatte
-        pending_requests = [r for r in requests if not os.path.exists(r['dest_path'])]
+        # Skips images that are already in the folder
+        pending_requests = [r for r in requests if not os.path.exists(r['image_path'])]
         skipped = len(requests) - len(pending_requests)
-        total_skipped += skipped
+        frame_skipped += skipped
         
         if not pending_requests:
-            print(f"[SKIP] {video_name}: Completato (tutti i file esistono).")
+            print(f"[SKIP] {video_name}: All frames already extracted\n")
             continue
 
-        # 3. Prepara lookup veloce
-        # Creiamo un dizionario { indice_frame: percorso_destinazione }
-        # Se ci sono più richieste per lo stesso frame (raro), sovrascrive, ma va bene
-        targets = { req['frame_idx']: req['dest_path'] for req in pending_requests }
+        # Dict { frame_id: image_path }
+        targets = { req['frame_id']: req['image_path'] for req in pending_requests }
         
-        # Troviamo il frame massimo necessario per fermare la lettura del video appena finito
-        max_frame_needed = max(targets.keys())
+        max_frame = max(targets.keys())
         
-        print(f"[PROCESS] {video_name}: Estraggo {len(targets)} frame (stop al frame {max_frame_needed})...")
+        print(f"[PROCESS] {video_name}: Extracting {len(targets)} frame (stop on frame {max_frame})")
         
-        # 4. Scansione Video Sequenziale
+
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            print(f"[ERRORE] Impossibile aprire: {video_path}")
+            print(f"[ERROR] Couldn't open {video_path}")
             continue
 
-        current_frame_idx = 0
+        current_frame_id = 0
         extracted_count = 0
         
         while True:
-            # Ottimizzazione: Se abbiamo superato l'ultimo frame che ci serve, usciamo
-            if current_frame_idx > max_frame_needed:
+            if current_frame_id > max_frame:
                 break
             
             ret, frame = cap.read()
             if not ret:
-                break # Fine del video naturale
+                break
             
-            # Controlliamo se questo indice è nella lista dei desideri (Lookup O(1))
-            if current_frame_idx in targets:
-                dest_path = targets[current_frame_idx]
-                cv2.imwrite(dest_path, frame)
-                extracted_count += 1
+            if current_frame_id in targets:
+                image_path = targets[current_frame_id]
+                cv2.imwrite(image_path, frame)
+                frame_extracted += 1
                 
-                # Feedback visivo ogni tanto
-                if extracted_count % 10 == 0:
-                    print(f"  -> Estratto frame {current_frame_idx}...", end='\r')
+                if frame_extracted % 10 == 0:
+                    print(f"Extracting frame {current_frame_id}", end='\r')
 
-            current_frame_idx += 1
+            current_frame_id += 1
         
         cap.release()
-        total_extracted += extracted_count
-        print(f"  -> {video_name}: Finito. {extracted_count} nuove immagini create.\n")
+        print(f"[FINISH] {video_name} ended\n")
 
-    print("\n--- RIEPILOGO ---")
-    print(f"Frame estratti e salvati: {total_extracted}")
-    print(f"Frame già esistenti (skippati): {total_skipped}")
+    print("\n--- SUMMARY ---")
+    print(f"Frame extracted: {frame_extracted}")
+    print(f"Frame already extracted (skip): {frame_skipped}")
+
 
 if __name__ == "__main__":
-    # 1. Trova i percorsi dei video reali
     video_mapping = get_video_map(VIDEOS_DIR)
     
     if not video_mapping:
-        print("Nessun video trovato. Controlla il percorso VIDEOS_DIR.")
+        print(f"No video found in {VIDEOS_DIR}")
         exit()
 
-    # 2. Crea la lista di cose da fare leggendo i txt
-    tasks_dict = scan_labels_and_build_tasks(DATASET_ROOT)
+    tasks_dict = build_tasks(DATASET_ROOT)
     
     if not tasks_dict:
-        print("Nessun file label trovato o pattern non riconosciuto.")
+        print("No label found")
         exit()
         
-    # 3. Esegui l'estrazione
     extract_frames(tasks_dict, video_mapping)
