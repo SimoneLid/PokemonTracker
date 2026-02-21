@@ -20,3 +20,6 @@ grafici*
 pippa.bat
 *.npy
 *.log
+Slide/
+image_creator.py
+predict.py

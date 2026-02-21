@@ -70,7 +70,6 @@ while cap.isOpened():
 
     if pres_frame_tensor is None:
         pres_frame_tensor = fut_frame_tensor
-        print("Entrato nel frame",frame_count)
         continue
     
     if past_frame_tensor is None:
