@@ -16,7 +16,7 @@ CATEGORIES = [{"id": 0, "name": "Magikarp"},
               {"id": 3, "name": "Kakuna"},
               {"id": 4, "name": "Budew"},
               {"id": 5, "name": "Staryu"}]
-
+#ciao
 
 def post_process(prediction, conf_thres=0.25, iou_thres=0.45):
     """
